@@ -81,7 +81,12 @@
           </select>
         </label>
         <label>API version
-          <input name="dcs_api_version" value="{{ s.dcs_api_version }}" placeholder="1.0" />
+          <input name="dcs_api_version" value="{{ s.dcs_api_version }}" placeholder="auto-detect" list="api-version-suggestions" />
+          <datalist id="api-version-suggestions">
+            <option value="">auto-detect (recommended)</option>
+            <option value="1.0">1.0 (REST Support 2.0 / 2.01)</option>
+          </datalist>
+          <small class="muted">Leave empty to probe both <code>/&lt;resource&gt;</code> and <code>/1.0/&lt;resource&gt;</code>.</small>
         </label>
         <label class="checkbox">
           <input type="checkbox" name="dcs_verify_tls" {% if s.dcs_verify_tls %}checked{% endif %} />
