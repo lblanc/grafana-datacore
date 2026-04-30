@@ -355,9 +355,10 @@ class Runner:
         }
         try:
             STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
-            tmp = STATUS_PATH.with_suffix(STATUS_PATH.suffix + ".tmp")
-            tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-            os.replace(tmp, STATUS_PATH)
+            # Direct write — works with both Docker volumes and bind-mounts.
+            # The reader (setup UI) tolerates partial writes by treating a
+            # JSONDecodeError as "not yet ready".
+            STATUS_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except OSError as exc:
             LOGGER.debug("Could not write status file: %s", exc)
 

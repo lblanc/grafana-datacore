@@ -103,7 +103,7 @@ def require_auth(session: Optional[str] = Cookie(default=None, alias=COOKIE_NAME
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, error: Optional[str] = None):
     return templates.TemplateResponse(
-        "login.html", {"request": request, "error": error}
+        request, "login.html", {"error": error}
     )
 
 
@@ -142,9 +142,9 @@ def logout():
 def index(request: Request, _auth: bool = Depends(require_auth)):
     settings = load_settings(INI_PATH)
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "s": settings,
             "categories": PERFORMANCE_CATEGORIES,
             "saved": request.query_params.get("saved") == "1",
@@ -282,7 +282,7 @@ def status_endpoint(_auth: bool = Depends(require_auth)):
 # ---------------------------------------------------------------- logs
 @app.get("/logs", response_class=HTMLResponse)
 def logs_page(request: Request, _auth: bool = Depends(require_auth)):
-    return templates.TemplateResponse("logs.html", {"request": request})
+    return templates.TemplateResponse(request, "logs.html", {})
 
 
 @app.get("/logs/tail", response_class=PlainTextResponse)

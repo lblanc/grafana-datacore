@@ -234,13 +234,17 @@ def save_settings(settings: Settings, ini_path: Path, env_path: Path) -> None:
             section["exclude_counters"] = c.exclude_counters
         cfg[cat] = section
 
-    # Atomic write: temp file + rename.
+    # Render the .ini text in memory then write it in place.
+    # We can't use the temp-file + rename pattern here: when collector.ini
+    # is bind-mounted from the host into the container, os.replace fails
+    # with "Device or resource busy" because the destination is a mount
+    # point. Truncate-then-write is the safe alternative.
+    import io
+    buf = io.StringIO()
+    buf.write("; Managed by the setup UI. Manual edits will be preserved\n")
+    buf.write("; for unknown keys but standard keys may be overwritten.\n\n")
+    cfg.write(buf)
     ini_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = ini_path.with_suffix(ini_path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        fh.write("; Managed by the setup UI. Manual edits will be preserved\n")
-        fh.write("; for unknown keys but standard keys may be overwritten.\n\n")
-        cfg.write(fh)
-    os.replace(tmp, ini_path)
+    ini_path.write_text(buf.getvalue(), encoding="utf-8")
 
     write_env(env_path, _resolve_envvar_refs(settings))
