@@ -59,12 +59,40 @@ INI_PATH = CONFIG_DIR / "collector.ini"
 ENV_PATH = CONFIG_DIR / ".env"
 STATUS_PATH = Path(os.environ.get("COLLECTOR_STATUS_FILE", "/status/status.json"))
 
-# Auth
-ADMIN_USER = os.environ.get("SETUP_ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.environ.get("SETUP_ADMIN_PASSWORD", "admin")
+# Auth — credentials are re-read from .env on every check so password
+# changes apply immediately without restarting the container. We fall
+# back to env vars (set at container start) if .env is missing or the
+# key isn't there.
 SECRET_KEY = os.environ.get("SETUP_SECRET_KEY") or secrets.token_urlsafe(32)
 COOKIE_NAME = "setup_session"
 COOKIE_MAX_AGE = 3600 * 8  # 8h
+
+
+def _current_admin_credentials() -> tuple[str, str]:
+    """Return (user, password) for the setup UI admin.
+
+    Priority: live .env file > process environment > hardcoded defaults.
+    Reading the file each time keeps password changes effective without
+    restarting the setup container.
+    """
+    from .settings_store import read_env  # local import avoids circular load
+    env_values: dict = {}
+    try:
+        env_values = read_env(ENV_PATH)
+    except Exception:
+        # Don't lock anyone out if .env is briefly unreadable.
+        pass
+    user = (
+        env_values.get("SETUP_ADMIN_USER")
+        or os.environ.get("SETUP_ADMIN_USER")
+        or "admin"
+    )
+    password = (
+        env_values.get("SETUP_ADMIN_PASSWORD")
+        or os.environ.get("SETUP_ADMIN_PASSWORD")
+        or "admin"
+    )
+    return user, password
 
 _serializer = URLSafeSerializer(SECRET_KEY, salt="setup-session")
 
@@ -77,7 +105,8 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 # ---------------------------------------------------------------- auth
 def _make_session_token() -> str:
-    return _serializer.dumps({"user": ADMIN_USER})
+    user, _ = _current_admin_credentials()
+    return _serializer.dumps({"user": user})
 
 
 def _check_session(token: Optional[str]) -> bool:
@@ -87,7 +116,8 @@ def _check_session(token: Optional[str]) -> bool:
         data = _serializer.loads(token)
     except BadSignature:
         return False
-    return data.get("user") == ADMIN_USER
+    expected_user, _ = _current_admin_credentials()
+    return data.get("user") == expected_user
 
 
 def require_auth(session: Optional[str] = Cookie(default=None, alias=COOKIE_NAME)):
@@ -113,9 +143,10 @@ def login_submit(
     username: str = Form(...),
     password: str = Form(...),
 ):
+    expected_user, expected_pwd = _current_admin_credentials()
     if not (
-        secrets.compare_digest(username, ADMIN_USER)
-        and secrets.compare_digest(password, ADMIN_PASSWORD)
+        secrets.compare_digest(username, expected_user)
+        and secrets.compare_digest(password, expected_pwd)
     ):
         return RedirectResponse(
             url="/login?error=Invalid+credentials", status_code=303
@@ -138,17 +169,63 @@ def logout():
     return redirect
 
 
+@app.post("/account/password")
+def change_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    _auth: bool = Depends(require_auth),
+):
+    """Change SETUP_ADMIN_PASSWORD in .env. Logs the user out on success."""
+    from .settings_store import read_env, write_env  # avoid circular at boot
+
+    _, expected_pwd = _current_admin_credentials()
+
+    def _redirect_error(msg: str) -> RedirectResponse:
+        from urllib.parse import quote
+        return RedirectResponse(url=f"/?pwd_error={quote(msg)}", status_code=303)
+
+    if not secrets.compare_digest(current_password, expected_pwd):
+        return _redirect_error("Current password is incorrect")
+    if new_password != confirm_password:
+        return _redirect_error("New password and confirmation do not match")
+    if len(new_password) < 8:
+        return _redirect_error("New password must be at least 8 characters")
+    if new_password == expected_pwd:
+        return _redirect_error("New password must differ from the current one")
+
+    # Write new password to .env. write_env preserves all other keys.
+    try:
+        write_env(ENV_PATH, {"SETUP_ADMIN_PASSWORD": new_password})
+    except Exception as exc:  # pragma: no cover — defensive
+        LOGGER.exception("Failed to write .env")
+        return _redirect_error(f"Failed to update .env: {exc}")
+
+    LOGGER.info("Setup UI admin password changed; invalidating session.")
+    # Force re-login so the new password takes effect immediately.
+    redirect = RedirectResponse(
+        url="/login?error=Password+changed,+please+sign+in+again",
+        status_code=303,
+    )
+    redirect.delete_cookie(COOKIE_NAME)
+    return redirect
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, _auth: bool = Depends(require_auth)):
     settings = load_settings(INI_PATH)
+    qp = request.query_params
     return templates.TemplateResponse(
         request,
         "index.html",
         {
             "s": settings,
             "categories": PERFORMANCE_CATEGORIES,
-            "saved": request.query_params.get("saved") == "1",
-            "reloaded": request.query_params.get("reloaded") == "1",
+            "saved": qp.get("saved") == "1",
+            "reloaded": qp.get("reloaded") == "1",
+            "pwd_changed": qp.get("pwd") == "ok",
+            "pwd_error": qp.get("pwd_error"),
+            "current_admin_user": _current_admin_credentials()[0],
         },
     )
 

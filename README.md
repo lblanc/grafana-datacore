@@ -151,7 +151,7 @@ git clone https://github.com/lblanc/grafana-datacore.git
 cd grafana-datacore
 ```
 
-### 2. Create the `.env`
+### 2. Create the `.env` with the bare minimum to start
 
 ```bash
 cp .env.example .env
@@ -162,39 +162,26 @@ $EDITOR .env
 > Docker creates it as a *directory* and the stack fails to start.
 > If that happens: `rm -rf .env && cp .env.example .env`.
 
-Minimum to fill in:
+You only need to set the **infrastructure** credentials at this stage —
+the InfluxDB and Grafana admin accounts that are baked in at first
+boot, plus the Setup UI login. **Leave the DataCore credentials as
+placeholders**: you'll fill them in through the web UI in step 5,
+which also lets you test the connection before saving.
 
-| Variable                   | Meaning |
-|----------------------------|---|
-| `DCSREST`                  | IP or FQDN of the IIS host running DataCore REST Support |
-| `DCSSVR`                   | Server name in the SANsymphony group (`ServerHost` header) |
-| `DCSUNAME`, `DCSPWORD`     | DataCore credentials |
-| `INFLUX_DB`                | Database name (created on first boot) |
-| `INFLUX_USER`, `INFLUX_PASSWORD` | Non-admin user used by the collector and Grafana |
-| `INFLUX_ADMIN_USER`, `INFLUX_ADMIN_PASSWORD` | Admin user, used only at first boot |
-| `GF_ADMIN_USER`, `GF_ADMIN_PASSWORD` | Grafana admin login |
-| `SETUP_ADMIN_USER`, `SETUP_ADMIN_PASSWORD` | Setup UI login |
-| `SETUP_SECRET_KEY`         | Optional: pin the setup cookie key across restarts |
+| Variable                                        | Required at first boot | Notes |
+|-------------------------------------------------|-----------------------|---|
+| `INFLUX_DB`                                     | yes                   | Database name (created on first boot) |
+| `INFLUX_ADMIN_USER`, `INFLUX_ADMIN_PASSWORD`    | yes                   | InfluxDB admin |
+| `INFLUX_USER`, `INFLUX_PASSWORD`                | yes                   | Non-admin user used by the collector and Grafana |
+| `GF_ADMIN_USER`, `GF_ADMIN_PASSWORD`            | yes                   | Grafana admin login |
+| `SETUP_ADMIN_USER`, `SETUP_ADMIN_PASSWORD`      | yes                   | Setup UI login (you can change it from the UI later) |
+| `SETUP_SECRET_KEY`                              | recommended           | Pin the setup cookie key across restarts |
+| `DCSREST`, `DCSSVR`, `DCSUNAME`, `DCSPWORD`     | filled later via UI   | DataCore connection — leave as placeholders for now |
 
-You can keep most defaults for an evaluation deployment. **Change every
-`changeme` before exposing the stack to anything beyond your laptop.**
+**Change every `changeme` before exposing the stack to anything beyond
+your laptop.**
 
-### 3. Adjust `collector/collector.ini` if needed
-
-Defaults enable the most useful categories. The most important field
-is the **transport choice**:
-
-```ini
-[datacore]
-scheme       = https      ; or 'http'
-verify_tls   = false      ; set to true if you have a trusted certificate
-api_version  =            ; leave empty to auto-detect; set '1.0' for REST 2.x
-```
-
-You can also edit categories from the web setup UI without touching
-the file by hand.
-
-### 4. Build and start
+### 3. Build and start
 
 ```bash
 docker compose build
@@ -205,11 +192,46 @@ docker compose ps
 You should see four healthy containers. Initial pulls and image builds
 take 1–3 minutes depending on bandwidth.
 
+### 4. Open the Setup UI and configure DataCore
+
+Browse to <http://localhost:8088> and sign in with `SETUP_ADMIN_USER` /
+`SETUP_ADMIN_PASSWORD` (from your `.env`). On the home page:
+
+1. Fill in the **DataCore** section: REST host, server name, username,
+   password, scheme (`https`/`http`), TLS verification, API version.
+2. Click **Test DataCore connection**. It calls `/servers` exactly the
+   way the collector does — if it returns the list of your DataCore
+   servers, the credentials are good. If not, the error tells you
+   what's wrong (auth, network, TLS).
+3. Verify the **InfluxDB** section. The pre-filled values should match
+   what's in your `.env`; click **Test InfluxDB connection** to
+   confirm.
+4. Toggle the **performance categories** you want collected. Defaults
+   are sensible; you can tweak `include_names` / `exclude_names` /
+   `include_counters` per category.
+5. Click **Save settings**, leave *Reload collector after saving*
+   checked. Within ~30 s the collector picks up the new config and
+   starts pushing data.
+
+The Setup UI writes both `collector/collector.ini` and the relevant
+keys in `.env`, preserving any keys you've added by hand. Once you've
+saved your settings here, you generally don't need to edit those files
+manually — see [Setup UI](#setup-ui) for what the UI handles.
+
+> **Optional — change the Setup UI password.** On the home page, scroll
+> down to **Setup UI account** and use the password change form. The
+> change is written back to `.env` and takes effect immediately
+> (you'll be signed out and asked to sign in again).
+
 ### 5. First-run validation
 
+Use the Setup UI's **status panel** at the top of the page: it shows
+the current cycle state, points written, and a per-category breakdown.
+Within ~30 s you should see `points_written > 0` on the last cycle.
+
+You can also tail the collector from the terminal:
+
 ```bash
-# Tail the collector — within ~30s you should see lines like
-#   "Wrote N points to InfluxDB database 'datacore'"
 docker compose logs -f collector
 ```
 
@@ -226,6 +248,27 @@ URLs after a successful start:
 In Grafana, navigate to *Dashboards → DataCore → DataCore Overview*.
 The pre-provisioned datasource is `DataCore-InfluxDB` and the dashboard
 queries the `datacore_*` measurements directly.
+
+### Editing config files directly (advanced / fallback)
+
+Everything the Setup UI does can also be done by editing
+`collector/collector.ini` and `.env` on disk. This is mostly useful
+for:
+
+- Bootstrapping unattended deployments (CI, IaC) where the UI isn't
+  practical.
+- Tweaking settings the UI doesn't expose yet (rare).
+- Recovering when the UI is down for any reason.
+
+After editing files manually, signal the collector to reload its
+config:
+
+```bash
+docker compose kill -s SIGHUP collector
+```
+
+The schema of both files is documented in
+[Configuration reference](#configuration-reference).
 
 ---
 
@@ -419,6 +462,11 @@ in with `SETUP_ADMIN_USER` / `SETUP_ADMIN_PASSWORD`.
   in `.env`. Existing keys you have added to `.env` are preserved.
 - **Reload** sends `SIGHUP` to the collector container via the Docker
   Engine API (the socket is mounted into the setup container).
+- **Change the Setup UI password** from the *Setup UI account* section
+  on the home page. The new password is written to
+  `SETUP_ADMIN_PASSWORD` in `.env` and takes effect immediately — no
+  container restart needed. Minimum length 8 characters; you'll be
+  signed out and prompted to sign in again with the new password.
 - **Status panel** (top of the home page): polls `/status` every 5 s.
   Shows current state, cycle count, last cycle duration, points
   written, next cycle countdown, and a per-category table of resources

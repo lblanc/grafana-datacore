@@ -248,3 +248,19 @@ details.categories summary {
 .logs-pane .lvl-INFO  { color: #e2e8f0; }
 .logs-pane .lvl-WARNING { color: #fbbf24; }
 .logs-pane .lvl-ERROR { color: #f87171; font-weight: 600; }
+
+/* ---- Setup UI account section ---- */
+.account-card { margin-top: 1.5rem; }
+.account-card h2 { margin-top: 0; }
+.password-form { max-width: 28rem; }
+.password-form .form-row { margin-bottom: .75rem; }
+.password-form .form-row label {
+  display: block;
+  margin-bottom: .25rem;
+  font-size: .9rem;
+  color: var(--muted);
+}
+.password-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+}
