@@ -1,8 +1,15 @@
 apiVersion: 1
 
+# Delete any prior version of the datasource before provisioning the
+# current one. Without this block, Grafana 13 fails to start when the
+# database has stale entries from a previous schema.
+deleteDatasources:
+  - name: DataCore-InfluxDB
+    orgId: 1
+
 datasources:
   - name: DataCore-InfluxDB
-    uid: DataCore-InfluxDB
+    uid: datacore_influxdb
     type: influxdb
     access: proxy
     url: http://influxdb:8086

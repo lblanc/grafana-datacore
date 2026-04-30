@@ -61,9 +61,14 @@ PERFORMANCE_CATEGORIES: Dict[str, str] = {
 }
 
 # Resources that need extra query parameters and cannot be listed naked.
-# Mapping: resource -> (param name, source category whose Ids feed it)
-PARAMETERIZED_RESOURCES: Dict[str, Tuple[str, str]] = {
-    "poollogicaldisks": ("pool", "pools"),
+# Mapping: resource -> (param name, source category whose Ids feed it,
+#                       real endpoint to call -- defaults to the category name)
+#
+# Note: ``poollogicaldisks`` is exposed as ``/logicaldisks?pool=<id>`` on
+# REST Support 2.x — there's no dedicated endpoint, just a filtered view
+# of /logicaldisks.
+PARAMETERIZED_RESOURCES: Dict[str, Tuple[str, str, str]] = {
+    "poollogicaldisks": ("pool", "pools", "logicaldisks"),
 }
 
 # DataCore returns timestamps like "/Date(1486402608775)/" or
@@ -333,28 +338,46 @@ class DataCoreClient:
     ) -> Iterator[Tuple[Dict[str, Any], Dict[str, Any]]]:
         """Yield ``(resource, perf_entry)`` pairs.
 
-        Errors on individual objects are logged and skipped instead of
-        raising so a single bad object does not break the cycle.
+        Errors on individual objects are logged at DEBUG and a single
+        summary line is emitted at WARNING level if any failed, so the
+        log stays readable when DataCore returns an error for many
+        objects in a row (e.g. host-side passthrough disks).
         """
+        failed = 0
+        first_error: Optional[str] = None
         for resource in resources:
             obj_id = resource.get("Id")
             if not obj_id:
-                LOGGER.warning(
+                LOGGER.debug(
                     "Skipping %s entry without 'Id': %r", category, resource
                 )
+                failed += 1
                 continue
             try:
                 perf_list = self.get_performance(obj_id)
             except DataCoreError as exc:
-                LOGGER.warning(
+                if first_error is None:
+                    first_error = str(exc)[:200]
+                LOGGER.debug(
                     "Failed to fetch performance for %s id=%s: %s",
                     category,
                     obj_id,
                     exc,
                 )
+                failed += 1
                 continue
             for entry in perf_list:
                 yield resource, entry
+
+        if failed:
+            LOGGER.warning(
+                "Category %s: %d/%d objects had no performance data "
+                "(first error: %s)",
+                category,
+                failed,
+                len(resources),
+                first_error or "no Id",
+            )
 
     # ------------------------------------------------------------------ #
     # Connectivity helpers

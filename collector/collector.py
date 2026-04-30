@@ -189,7 +189,7 @@ def _list_resources_for(
 ) -> List[Dict[str, Any]]:
     """List resources, including special-cased categories needing parameters."""
     if category in PARAMETERIZED_RESOURCES:
-        param_name, source_cat = PARAMETERIZED_RESOURCES[category]
+        param_name, source_cat, real_endpoint = PARAMETERIZED_RESOURCES[category]
         if source_cat == "pools":
             if not pool_ids:
                 raise DataCoreError(
@@ -200,12 +200,14 @@ def _list_resources_for(
             for pool_id in pool_ids:
                 try:
                     merged.extend(
-                        client.list_resources(category, params={param_name: pool_id})
+                        client.list_resources(
+                            real_endpoint, params={param_name: pool_id}
+                        )
                     )
                 except DataCoreError as exc:
                     LOGGER.warning(
                         "Could not list /%s for %s=%s: %s",
-                        category,
+                        real_endpoint,
                         param_name,
                         pool_id,
                         exc,
@@ -360,12 +362,23 @@ class Runner:
             # JSONDecodeError as "not yet ready".
             STATUS_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except OSError as exc:
-            LOGGER.debug("Could not write status file: %s", exc)
+            # Warn once, then debug — avoids spamming logs if the volume
+            # is misconfigured but lets the issue surface immediately.
+            if not getattr(self, "_status_write_warned", False):
+                LOGGER.warning(
+                    "Could not write status file %s: %s "
+                    "(check volume ownership; collector runs as UID 10001)",
+                    STATUS_PATH,
+                    exc,
+                )
+                self._status_write_warned = True
+            else:
+                LOGGER.debug("Could not write status file: %s", exc)
 
     # -- collection cycle --------------------------------------------- #
     def _ordered_categories(self) -> List[Tuple[str, CategoryFilter]]:
         """Categories sorted so that prerequisite ones (pools) run first."""
-        prerequisites = {src for _, src in PARAMETERIZED_RESOURCES.values()}
+        prerequisites = {src for _, src, _ep in PARAMETERIZED_RESOURCES.values()}
         return sorted(
             self.filters.items(),
             key=lambda kv: 0 if kv[0] in prerequisites else 1,
@@ -400,7 +413,7 @@ class Runner:
             if self._stop:
                 break
             if any(
-                src == category for _, src in PARAMETERIZED_RESOURCES.values()
+                src == category for _, src, _ep in PARAMETERIZED_RESOURCES.values()
             ):
                 # Prerequisite category: collect its pool ids regardless of
                 # whether it's enabled, so we can feed dependent categories.

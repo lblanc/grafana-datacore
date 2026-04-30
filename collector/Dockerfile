@@ -20,7 +20,9 @@ COPY lib ./lib
 
 # Run as a non-root user
 RUN useradd --no-create-home --shell /sbin/nologin --uid 10001 collector \
-    && chown -R collector:collector /app
+    && chown -R collector:collector /app \
+    && mkdir -p /status /app/dumps \
+    && chown collector:collector /status /app/dumps
 USER collector
 
 ENV DATACORE_CONFIG=/app/collector.ini
