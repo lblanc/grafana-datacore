@@ -116,17 +116,22 @@ class DataCoreClient:
         self.scheme = scheme
         self.verify_tls = verify_tls
 
-        # Both candidate base URLs. We try the user-configured one first,
-        # then fall back if the endpoint isn't there.
+        # Both candidate base URLs. We try the user-configured one first
+        # then fall back to the alternative if the endpoint returns 404.
+        # The fallback is always available (in both directions) so the UI
+        # can leave api_version empty and still discover REST Support
+        # 2.0/2.01 builds that require the /1.0/ prefix.
         self._root_url = f"{scheme}://{rest_host}/RestService/rest.svc"
+        # Default versioned URL used as the alternative: /1.0/ has been
+        # the canonical version since REST 2.0.
+        default_version = api_version.lstrip("/") if api_version else "1.0"
+        self._versioned_url = f"{self._root_url}/{default_version}"
         if api_version:
-            self._versioned_url = f"{self._root_url}/{api_version.lstrip('/')}"
             self._preferred_first = self._versioned_url
             self._fallback = self._root_url
         else:
-            self._versioned_url = None
             self._preferred_first = self._root_url
-            self._fallback = None
+            self._fallback = self._versioned_url
 
         # Cache of resolved base URL per endpoint name.
         self._endpoint_base: Dict[str, str] = {}
