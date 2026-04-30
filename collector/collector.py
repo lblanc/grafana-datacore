@@ -53,6 +53,31 @@ RESOURCE_TAG_KEYS = (
     "PoolName",
 )
 
+# Resource fields (from the resource object itself, not from /performance)
+# that we expose as InfluxDB fields. These are useful for status panels:
+# State, CacheState, PowerState, PoolStatus, DiskStatus, etc. They change
+# rarely but the dashboard needs them as fields (not tags) to do panel
+# value mapping (Online/Offline/...) and selects.
+RESOURCE_FIELD_KEYS = (
+    # Common state-style fields
+    "State",
+    "Status",
+    "PoolStatus",
+    "DiskStatus",
+    "CacheState",
+    "PowerState",
+    "OperationalState",
+    "MirrorState",
+    # Capacity / size fields that don't appear in /performance
+    "Size",
+    "CacheSize",
+    "ChunkSize",
+    "MaxTierNumber",
+    "TierReservedPct",
+    "InSharedMode",
+    "Type",
+)
+
 # Keys we never emit as fields (metadata or values handled separately).
 PERF_SKIP_KEYS = frozenset({"__type", "ExtendedCaption", "Caption", "Id"})
 
@@ -148,6 +173,7 @@ def _build_tags(category: str, resource: Dict[str, Any]) -> Dict[str, str]:
 def _build_fields(
     perf: Dict[str, Any],
     counter_allowed: Callable[[str], bool],
+    resource: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], Optional[int]]:
     fields: Dict[str, Any] = {}
     timestamp_ms: Optional[int] = None
@@ -165,6 +191,27 @@ def _build_fields(
             continue
         if isinstance(value, (int, float)) and counter_allowed(key):
             fields[key] = value
+
+    # Add selected resource-level fields (status, sizes, etc.).
+    # These do NOT appear in /performance but the dashboard needs them
+    # as fields for status panels and value-mapping.
+    if resource is not None:
+        for key in RESOURCE_FIELD_KEYS:
+            if key in fields:
+                continue  # already provided by /performance
+            value = resource.get(key)
+            if value is None:
+                continue
+            # DataCore often wraps quantities in a {"Value": N, "Units": "..."}
+            # object. Unwrap so we get the numeric value.
+            if isinstance(value, dict) and "Value" in value:
+                value = value["Value"]
+            if isinstance(value, bool):
+                # Convert booleans to 0/1 so panels can do value mapping.
+                fields[key] = 1 if value else 0
+                continue
+            if isinstance(value, (int, float)):
+                fields[key] = value
 
     return fields, timestamp_ms
 
@@ -257,7 +304,7 @@ def collect_category(
     points: List[LineProtocolPoint] = []
 
     for resource, perf in client.iter_performance(category, selected):
-        fields, ts_ms = _build_fields(perf, counter_allowed)
+        fields, ts_ms = _build_fields(perf, counter_allowed, resource=resource)
         if not fields:
             continue
         points.append(

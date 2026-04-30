@@ -1,136 +1,2231 @@
 {
-  "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": "-- Grafana --",
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
-  },
-  "description": "Auto-provisioned overview built from the metrics collected by the DataCore REST collector.",
+  "title": "DataCore Overview",
+  "uid": "datacore-overview",
+  "tags": [
+    "datacore"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": null,
-  "uid": "datacore-overview",
-  "title": "DataCore - Overview",
-  "tags": ["datacore", "sansymphony"],
-  "timezone": "browser",
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
-  "templating": {
-    "list": [
-      {
-        "name": "vdisk",
-        "type": "query",
-        "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-        "query": "SHOW TAG VALUES FROM \"datacore_virtualdisks\" WITH KEY = \"resource_name\"",
-        "refresh": 2,
-        "multi": true,
-        "includeAll": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" }
-      },
-      {
-        "name": "pool",
-        "type": "query",
-        "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-        "query": "SHOW TAG VALUES FROM \"datacore_pools\" WITH KEY = \"resource_name\"",
-        "refresh": 2,
-        "multi": true,
-        "includeAll": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" }
-      }
-    ]
-  },
+  "liveNow": false,
   "panels": [
     {
+      "id": 1,
+      "type": "row",
+      "title": "Overview",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [],
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Server Group IOPS (current)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "iops",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") FROM (SELECT non_negative_derivative(last(\"TotalOperations\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": ""
+        }
+      ],
+      "interval": "1m"
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Server Group Throughput",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "unit": "Bps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") FROM (SELECT non_negative_derivative(last(\"TotalBytesTransferred\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": ""
+        }
+      ],
+      "interval": "1m"
+    },
+    {
+      "id": 7,
       "type": "timeseries",
-      "title": "Virtual disks - Total operations / s",
-      "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "title": "Server Group IOPS \u2014 Read vs Write",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 7
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "iops",
-          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
         }
       },
       "targets": [
         {
-          "refId": "A",
-          "query": "SELECT non_negative_derivative(mean(\"TotalOperations\"), 1s) AS \"iops\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") AS \"Reads\" FROM (SELECT non_negative_derivative(last(\"TotalReads\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
           "rawQuery": true,
-          "resultFormat": "time_series"
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": "Reads"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") AS \"Writes\" FROM (SELECT non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "alias": "Writes"
         }
-      ]
+      ],
+      "interval": "1m"
     },
     {
+      "id": 8,
       "type": "timeseries",
-      "title": "Virtual disks - Bytes read / write per second",
-      "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "title": "Server Group Throughput \u2014 Read vs Write",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 7
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "Bps",
-          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ]
         }
       },
       "targets": [
         {
-          "refId": "A",
-          "query": "SELECT non_negative_derivative(mean(\"TotalBytesRead\"), 1s) AS \"read\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") AS \"Read\" FROM (SELECT non_negative_derivative(last(\"TotalBytesRead\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
           "rawQuery": true,
-          "resultFormat": "time_series"
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": "Read"
         },
         {
-          "refId": "B",
-          "query": "SELECT non_negative_derivative(mean(\"TotalBytesWritten\"), 1s) AS \"write\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT sum(\"rate\") AS \"Write\" FROM (SELECT non_negative_derivative(last(\"TotalBytesWritten\"), 1s) AS \"rate\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
           "rawQuery": true,
-          "resultFormat": "time_series"
+          "refId": "B",
+          "resultFormat": "time_series",
+          "alias": "Write"
         }
-      ]
+      ],
+      "interval": "1m"
     },
     {
-      "type": "timeseries",
-      "title": "Pools - Bytes allocated %",
-      "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "id": 9,
+      "type": "bargauge",
+      "title": "Pool Allocation",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 7
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "max": 100,
           "min": 0,
-          "custom": { "drawStyle": "line", "fillOpacity": 15 }
-        }
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
       },
       "targets": [
         {
-          "refId": "A",
-          "query": "SELECT mean(\"PercentAllocated\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(previous)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT last(\"PercentAllocated\") FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\"",
           "rawQuery": true,
-          "resultFormat": "time_series"
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": ""
         }
       ]
     },
     {
-      "type": "table",
-      "title": "Pools - Capacity overview",
-      "datasource": { "type": "influxdb", "uid": "datacore_influxdb" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "id": 10,
+      "type": "piechart",
+      "title": "Server Group Capacity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "datacore_influxdb"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
       "targets": [
         {
-          "refId": "A",
-          "query": "SELECT last(\"BytesTotal\") AS \"Total\", last(\"BytesAllocated\") AS \"Allocated\", last(\"BytesAvailable\") AS \"Available\", last(\"PercentAllocated\") AS \"% Allocated\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\"",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "query": "SELECT last(\"BytesAllocated\") AS \"Allocated\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\"",
           "rawQuery": true,
-          "resultFormat": "table"
+          "refId": "A",
+          "resultFormat": "time_series",
+          "alias": "$tag_resource_name"
         }
       ]
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "DataCore Servers \u2014 $server",
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 12,
+          "type": "stat",
+          "title": "State",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Offline",
+                      "color": "red"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "2": {
+                      "text": "Online",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "unit": "none",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"State\") FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "type": "stat",
+          "title": "Cache",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 4,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Unknown",
+                      "color": "yellow"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Disabled",
+                      "color": "orange"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "2": {
+                      "text": "Enabled",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "unit": "none",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"CacheState\") FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "stat",
+          "title": "Power",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Unknown",
+                      "color": "yellow"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "AC Lost",
+                      "color": "red"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "2": {
+                      "text": "AC OK",
+                      "color": "green"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "3": {
+                      "text": "Low Battery",
+                      "color": "red"
+                    }
+                  }
+                }
+              ],
+              "unit": "none",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"PowerState\") FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "type": "stat",
+          "title": "Cache Size",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"CacheSize\") FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "type": "stat",
+          "title": "Total Cache Hits %",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT 100 * (mean(\"rh\") + mean(\"wh\")) / (mean(\"rh\") + mean(\"rm\") + mean(\"wh\") + mean(\"wm\")) AS \"Hit %\" FROM (SELECT non_negative_derivative(last(\"CacheReadHits\"), 1s) AS \"rh\", non_negative_derivative(last(\"CacheReadMisses\"), 1s) AS \"rm\", non_negative_derivative(last(\"CacheWriteHits\"), 1s) AS \"wh\", non_negative_derivative(last(\"CacheWriteMisses\"), 1s) AS \"wm\" FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter GROUP BY time($__interval) fill(null)) WHERE \"rh\" + \"rm\" + \"wh\" + \"wm\" > 0 GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "type": "stat",
+          "title": "Bytes Migrated",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 20,
+            "y": 20,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"TotalBytesMigrated\") FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "$server IOPS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 23,
+            "w": 12,
+            "h": 7
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "iops",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalReads\"), 1s) AS \"Reads\" FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Reads"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"Writes\" FROM \"datacore_servers\" WHERE \"resource_name\" =~ /^$server$/ AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Writes"
+            }
+          ],
+          "interval": "1m"
+        },
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "$server Latency",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 23,
+            "w": 12,
+            "h": 7
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT mean(\"lat\") AS \"Read\" FROM (SELECT non_negative_derivative(last(\"TotalReadTime\"), 1s) / non_negative_derivative(last(\"TotalReads\"), 1s) AS \"lat\" FROM \"datacore_pools\" WHERE \"extendedcaption\" =~ /on $server$/ AND $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Read"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT mean(\"lat\") AS \"Write\" FROM (SELECT non_negative_derivative(last(\"TotalWriteTime\"), 1s) / non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"lat\" FROM \"datacore_pools\" WHERE \"extendedcaption\" =~ /on $server$/ AND $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Write"
+            }
+          ],
+          "interval": "1m"
+        }
+      ],
+      "collapsed": true,
+      "repeat": "server"
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "DataCore Pool \u2014 $pool",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 21,
+          "type": "stat",
+          "title": "Pool Status",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Running",
+                      "color": "green"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Init",
+                      "color": "yellow"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "4": {
+                      "text": "Missing Disks",
+                      "color": "red"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "7": {
+                      "text": "Offline",
+                      "color": "red"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "8": {
+                      "text": "Unknown",
+                      "color": "yellow"
+                    }
+                  }
+                },
+                {
+                  "type": "value",
+                  "options": {
+                    "9": {
+                      "text": "Failed Redundancy",
+                      "color": "red"
+                    }
+                  }
+                }
+              ],
+              "unit": "none",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"PoolStatus\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "type": "stat",
+          "title": "Total Capacity",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 4,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesTotal\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "type": "stat",
+          "title": "Used",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesAllocated\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "type": "stat",
+          "title": "Free",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesAvailable\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "type": "stat",
+          "title": "Oversubscribed",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "unit": "bytes",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "auto",
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesOverSubscribed\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "type": "gauge",
+          "title": "Allocation",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 20,
+            "y": 31,
+            "w": 4,
+            "h": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "orientation": "auto"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"PercentAllocated\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": ""
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "type": "piechart",
+          "title": "Capacity Breakdown",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 34,
+            "w": 8,
+            "h": 7
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "list",
+              "placement": "right",
+              "values": [
+                "value",
+                "percent"
+              ]
+            },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesAllocatedPercentage\") AS \"Allocated\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Allocated"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesAvailablePercentage\") AS \"Available\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Available"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesReservedPercentage\") AS \"Reserved\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "C",
+              "resultFormat": "time_series",
+              "alias": "Reserved"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"BytesInReclamationPercentage\") AS \"In Reclamation\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter",
+              "rawQuery": true,
+              "refId": "D",
+              "resultFormat": "time_series",
+              "alias": "In Reclamation"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "type": "timeseries",
+          "title": "Pool IOPS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 34,
+            "w": 8,
+            "h": 7
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "iops",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalReads\"), 1s) AS \"Reads\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Reads"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"Writes\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Writes"
+            }
+          ],
+          "interval": "1m"
+        },
+        {
+          "id": 29,
+          "type": "timeseries",
+          "title": "Pool Latency",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 34,
+            "w": 8,
+            "h": 7
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": {
+                  "type": "linear"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT mean(\"lat\") AS \"Read\" FROM (SELECT non_negative_derivative(last(\"TotalReadTime\"), 1s) / non_negative_derivative(last(\"TotalReads\"), 1s) AS \"lat\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Read"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT mean(\"lat\") AS \"Write\" FROM (SELECT non_negative_derivative(last(\"TotalWriteTime\"), 1s) / non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"lat\" FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval) fill(null)) GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Write"
+            }
+          ],
+          "interval": "1m"
+        }
+      ],
+      "collapsed": true,
+      "repeat": "pool"
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "Virtual Disk: $vdisk",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 9001,
+          "type": "stat",
+          "title": "Etat: $vdisk",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 41,
+            "w": 4,
+            "h": 4
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Online",
+                      "color": "green"
+                    },
+                    "1": {
+                      "text": "Offline",
+                      "color": "red"
+                    },
+                    "2": {
+                      "text": "Failed Redundancy",
+                      "color": "orange"
+                    },
+                    "3": {
+                      "text": "Failed",
+                      "color": "red"
+                    },
+                    "4": {
+                      "text": "Unknown",
+                      "color": "yellow"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"DiskStatus\") FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series"
+            }
+          ]
+        },
+        {
+          "id": 9002,
+          "type": "stat",
+          "title": "Size: $vdisk",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 4,
+            "y": 41,
+            "w": 4,
+            "h": 4
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value",
+            "justifyMode": "center"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"Size\") FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series"
+            }
+          ]
+        },
+        {
+          "id": 9003,
+          "type": "piechart",
+          "title": "$vdisk",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 41,
+            "w": 6,
+            "h": 4
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "list",
+              "placement": "right",
+              "values": [
+                "value"
+              ]
+            },
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT last(\"PercentAllocated\") AS \"Allocated\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Allocated"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT 100 - last(\"PercentAllocated\") AS \"Available\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Available"
+            }
+          ]
+        },
+        {
+          "id": 9004,
+          "type": "timeseries",
+          "title": "IOPS: $vdisk",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "datacore_influxdb"
+          },
+          "gridPos": {
+            "x": 14,
+            "y": 41,
+            "w": 10,
+            "h": 4
+          },
+          "interval": "1m",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "iops",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "stacking": {
+                  "mode": "none"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#3274D9"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Reads"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#56A64B"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Writes"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#E02F44"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "mean",
+                "lastNotNull"
+              ]
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalOperations\"), 1s) AS \"Total\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "A",
+              "resultFormat": "time_series",
+              "alias": "Total"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalReads\"), 1s) AS \"Reads\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "B",
+              "resultFormat": "time_series",
+              "alias": "Reads"
+            },
+            {
+              "datasource": {
+                "type": "influxdb",
+                "uid": "datacore_influxdb"
+              },
+              "query": "SELECT non_negative_derivative(last(\"TotalWrites\"), 1s) AS \"Writes\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" = '$vdisk' AND $timeFilter GROUP BY time($__interval) fill(null)",
+              "rawQuery": true,
+              "refId": "C",
+              "resultFormat": "time_series",
+              "alias": "Writes"
+            }
+          ]
+        }
+      ],
+      "collapsed": false,
+      "repeat": "vdisk"
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "server",
+        "label": "DataCore Server",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "datacore_influxdb"
+        },
+        "query": "SHOW TAG VALUES FROM \"datacore_servers\" WITH KEY = \"resource_name\"",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "pool",
+        "label": "Disk Pool",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "datacore_influxdb"
+        },
+        "query": "SHOW TAG VALUES FROM \"datacore_pools\" WITH KEY = \"resource_name\"",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1
+      },
+      {
+        "name": "vdisk",
+        "label": "Virtual Disk",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "datacore_influxdb"
+        },
+        "query": "SELECT \"resource_name\" FROM (SELECT top(\"iops\", \"resource_name\", $top) FROM (SELECT sum(\"iops\") AS \"iops\" FROM (SELECT non_negative_derivative(last(\"TotalOperations\"), 1s) AS \"iops\" FROM \"datacore_virtualdisks\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY \"resource_name\"))",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1,
+        "regex": "",
+        "definition": "SELECT \"resource_name\" FROM (SELECT top(\"iops\", \"resource_name\", $top) FROM (SELECT sum(\"iops\") AS \"iops\" FROM (SELECT non_negative_derivative(last(\"TotalOperations\"), 1s) AS \"iops\" FROM \"datacore_virtualdisks\" WHERE $timeFilter GROUP BY \"resource_name\", time($__interval) fill(null)) GROUP BY \"resource_name\"))",
+        "allValue": null
+      },
+      {
+        "name": "top",
+        "label": "Top N",
+        "type": "custom",
+        "query": "5,10,20,50",
+        "current": {
+          "selected": true,
+          "text": "10",
+          "value": "10"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "5",
+            "value": "5"
+          },
+          {
+            "selected": true,
+            "text": "10",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "20",
+            "value": "20"
+          },
+          {
+            "selected": false,
+            "text": "50",
+            "value": "50"
+          }
+        ]
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "refresh": "1m",
+  "annotations": {
+    "list": []
+  }
 }
