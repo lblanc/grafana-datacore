@@ -194,13 +194,20 @@ class DataCoreClient:
                 self._preferred_first,
                 self._fallback,
             )
-            response = self._do_get(self._fallback, path, params)
-            if response.status_code != 404:
+            fallback_response = self._do_get(self._fallback, path, params)
+            if fallback_response.status_code != 404:
                 self._endpoint_base[endpoint] = self._fallback
-                return self._fallback, response
-            return self._fallback, response
+                return self._fallback, fallback_response
+            # Both 404 — don't cache anything so future calls retry both.
+            # Return the fallback response so the caller sees the most
+            # informative error message (the second one is usually clearer).
+            return self._fallback, fallback_response
 
-        self._endpoint_base[endpoint] = self._preferred_first
+        # Only cache the preferred base when the response is something
+        # other than 404 — caching a 404 would condemn future calls to
+        # the same dead URL.
+        if response.status_code != 404:
+            self._endpoint_base[endpoint] = self._preferred_first
         return self._preferred_first, response
 
     def _get_json(
@@ -242,18 +249,81 @@ class DataCoreClient:
             f"Unexpected response shape for /{category}: {type(data).__name__}"
         )
 
+    # Performance URL pattern varies across REST Support builds:
+    #   - "/1.0/performance/<id>"         id as path segment, versioned URL
+    #     (confirmed working on REST Support 2.x)
+    #   - "/performance/<id>"             id as path segment, unversioned
+    #   - "/performance?id=<id>"          id as query parameter, unversioned
+    #     (the form documented in older DataCore guides)
+    #   - "/1.0/performance?id=<id>"      id as query parameter, versioned
+    # We probe in this order and cache the winner.
+    _PERF_PATTERNS = (
+        "{base}/1.0/performance/{id}",
+        "{base}/performance/{id}",
+        "{base}/performance?id={id}",
+        "{base}/1.0/performance?id={id}",
+    )
+
+    def _build_perf_path(self, pattern: str, encoded_id: str) -> str:
+        """Render a perf URL pattern into the path to pass to ``_do_get``.
+
+        ``_do_get`` takes ``(base, path, params)`` and joins them with a
+        single slash. Our patterns describe the full URL relative to the
+        REST root, so we strip the base and return the suffix as-is.
+        """
+        full = pattern.format(base=self._root_url, id=encoded_id)
+        # Strip "<root_url>/" so what remains is the path suffix only.
+        prefix = self._root_url.rstrip("/") + "/"
+        return full[len(prefix):] if full.startswith(prefix) else full
+
     def get_performance(self, object_id: str) -> List[Dict[str, Any]]:
-        """Get performance counters for a single object id."""
-        # Encode the id explicitly: DataCore docs warn some clients must do
-        # it themselves, and it keeps the logged URL deterministic.
+        """Get performance counters for a single object id.
+
+        Auto-detects which URL pattern this REST Support build accepts
+        by probing the candidates in order. The successful pattern is
+        cached so subsequent calls go directly to the right URL.
+        """
+        # DataCore docs warn that ":" "{" and "}" must be percent-encoded
+        # by the client; ``quote(safe="")`` handles all three.
         encoded = quote(object_id, safe="")
-        result = self._get_json("performance", path=f"performance?id={encoded}")
-        if isinstance(result, list):
-            return result
-        if isinstance(result, dict):
-            return [result]
+
+        cached_pattern = getattr(self, "_perf_pattern", None)
+        patterns = (cached_pattern,) if cached_pattern else self._PERF_PATTERNS
+
+        last_response: Optional[requests.Response] = None
+        for pattern in patterns:
+            path = self._build_perf_path(pattern, encoded)
+            response = self._do_get(self._root_url, path, None)
+            last_response = response
+            if response.status_code == 404 and not cached_pattern:
+                LOGGER.debug(
+                    "Perf URL pattern %r returned 404; trying next variant",
+                    pattern,
+                )
+                continue
+            if response.status_code >= 400:
+                raise DataCoreError(
+                    f"DataCore returned {response.status_code} for {response.url}: "
+                    f"{response.text[:300]}",
+                    status_code=response.status_code,
+                )
+            try:
+                data = response.json()
+            except ValueError as exc:
+                raise DataCoreError(
+                    f"Could not decode JSON response from {response.url}: {exc}"
+                ) from exc
+            if not cached_pattern:
+                # First successful probe — remember the winning pattern.
+                self._perf_pattern = pattern
+                LOGGER.info("Detected performance URL pattern: %s", pattern)
+            return data if isinstance(data, list) else [data]
+
+        # Every candidate returned 404.
+        body = last_response.text[:200] if last_response is not None else "(no response)"
         raise DataCoreError(
-            f"Unexpected performance response shape: {type(result).__name__}"
+            f"No performance URL pattern works for id={object_id}; last body={body}",
+            status_code=404,
         )
 
     def iter_performance(
