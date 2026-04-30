@@ -1,0 +1,105 @@
+name: grafana-datacore
+
+services:
+  influxdb:
+    image: influxdb:1.12.4-alpine
+    container_name: grafana-datacore-influxdb
+    restart: unless-stopped
+    environment:
+      - INFLUXDB_DB=${INFLUX_DB:-datacore}
+      - INFLUXDB_HTTP_AUTH_ENABLED=true
+      - INFLUXDB_ADMIN_USER=${INFLUX_ADMIN_USER:-admin}
+      - INFLUXDB_ADMIN_PASSWORD=${INFLUX_ADMIN_PASSWORD:-changeme}
+      - INFLUXDB_USER=${INFLUX_USER:-datacore}
+      - INFLUXDB_USER_PASSWORD=${INFLUX_PASSWORD:-changeme}
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana-oss:13.0.1
+    container_name: grafana-datacore-grafana
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Make the datasource config aware of the Influx credentials at runtime
+      - INFLUX_DB=${INFLUX_DB:-datacore}
+      - INFLUX_USER=${INFLUX_USER:-datacore}
+      - INFLUX_PASSWORD=${INFLUX_PASSWORD:-changeme}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+  collector:
+    build:
+      context: ./collector
+    container_name: grafana-datacore-collector
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      # DataCore connection
+      - DCSSVR=${DCSSVR}
+      - DCSREST=${DCSREST}
+      - DCSUNAME=${DCSUNAME}
+      - DCSPWORD=${DCSPWORD}
+      # InfluxDB connection
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_DB=${INFLUX_DB:-datacore}
+      - INFLUX_USER=${INFLUX_USER:-datacore}
+      - INFLUX_PASSWORD=${INFLUX_PASSWORD:-changeme}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATACORE_STATUS_FILE=/status/status.json
+    volumes:
+      # Allow mounting a custom collector.ini without rebuilding the image.
+      - ./collector/collector.ini:/app/collector.ini:ro
+      - collector-status:/status
+
+  setup:
+    build:
+      context: .
+      dockerfile: setup/Dockerfile
+    container_name: grafana-datacore-setup
+    restart: unless-stopped
+    environment:
+      - SETUP_ADMIN_USER=${SETUP_ADMIN_USER:-admin}
+      - SETUP_ADMIN_PASSWORD=${SETUP_ADMIN_PASSWORD:-admin}
+      # Pin the session cookie key across restarts; generate one with
+      # `python -c 'import secrets; print(secrets.token_urlsafe(32))'`.
+      - SETUP_SECRET_KEY=${SETUP_SECRET_KEY:-}
+      - CONFIG_DIR=/config
+      - COLLECTOR_CONTAINER=grafana-datacore-collector
+      - COLLECTOR_STATUS_FILE=/status/status.json
+    ports:
+      - "8088:8080"
+    volumes:
+      # Setup writes both the collector config and the .env consumed by
+      # docker-compose. Both are bind-mounted from the project root.
+      - ./collector/collector.ini:/config/collector.ini
+      - ./.env:/config/.env
+      # Read-only access to the Docker socket so the setup UI can send
+      # SIGHUP to the collector container. Treat this as a privileged
+      # capability — keep this service behind an admin login.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Read-only view of the collector status file (written by the collector).
+      - collector-status:/status:ro
+
+volumes:
+  influxdb-data:
+  grafana-data:
+  collector-status:

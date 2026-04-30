@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Collector logs</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <h1>Collector logs</h1>
+    <div class="actions">
+      <a href="/" class="btn-link">← Settings</a>
+      <form method="post" action="/logout" class="inline">
+        <button class="ghost" type="submit">Sign out</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div class="logs-toolbar">
+      <label>Filter
+        <input id="filter" placeholder="substring (case-insensitive)" />
+      </label>
+      <label>Level
+        <select id="level-filter">
+          <option value="">all</option>
+          <option value="DEBUG">DEBUG+</option>
+          <option value="INFO" selected>INFO+</option>
+          <option value="WARNING">WARNING+</option>
+          <option value="ERROR">ERROR only</option>
+        </select>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" id="autoscroll" checked />
+        Auto-scroll
+      </label>
+      <span class="grow"></span>
+      <button id="pause-btn" type="button" class="ghost">Pause</button>
+      <button id="clear-btn" type="button" class="ghost">Clear</button>
+      <span id="conn-state" class="muted">connecting…</span>
+    </div>
+
+    <pre id="logs" class="logs-pane">Loading…</pre>
+  </section>
+</main>
+
+<script src="/static/logs.js"></script>
+</body>
+</html>

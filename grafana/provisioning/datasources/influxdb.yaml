@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: DataCore-InfluxDB
+    uid: DataCore-InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: ${INFLUX_DB}
+    user: ${INFLUX_USER}
+    isDefault: true
+    jsonData:
+      httpMode: GET
+      dbName: ${INFLUX_DB}
+    secureJsonData:
+      password: ${INFLUX_PASSWORD}
+    editable: true

@@ -1,0 +1,136 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Auto-provisioned overview built from the metrics collected by the DataCore REST collector.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "uid": "datacore-overview",
+  "title": "DataCore - Overview",
+  "tags": ["datacore", "sansymphony"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "vdisk",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+        "query": "SHOW TAG VALUES FROM \"datacore_virtualdisks\" WITH KEY = \"resource_name\"",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "pool",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+        "query": "SHOW TAG VALUES FROM \"datacore_pools\" WITH KEY = \"resource_name\"",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Virtual disks - Total operations / s",
+      "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT non_negative_derivative(mean(\"TotalOperations\"), 1s) AS \"iops\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Virtual disks - Bytes read / write per second",
+      "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT non_negative_derivative(mean(\"TotalBytesRead\"), 1s) AS \"read\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        },
+        {
+          "refId": "B",
+          "query": "SELECT non_negative_derivative(mean(\"TotalBytesWritten\"), 1s) AS \"write\" FROM \"datacore_virtualdisks\" WHERE \"resource_name\" =~ /^$vdisk$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(null)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pools - Bytes allocated %",
+      "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "max": 100,
+          "min": 0,
+          "custom": { "drawStyle": "line", "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT mean(\"PercentAllocated\") FROM \"datacore_pools\" WHERE \"resource_name\" =~ /^$pool$/ AND $timeFilter GROUP BY time($__interval), \"resource_name\" fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Pools - Capacity overview",
+      "datasource": { "type": "influxdb", "uid": "DataCore-InfluxDB" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT last(\"BytesTotal\") AS \"Total\", last(\"BytesAllocated\") AS \"Allocated\", last(\"BytesAvailable\") AS \"Available\", last(\"PercentAllocated\") AS \"% Allocated\" FROM \"datacore_pools\" WHERE $timeFilter GROUP BY \"resource_name\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        }
+      ]
+    }
+  ]
+}
