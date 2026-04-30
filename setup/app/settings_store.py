@@ -123,6 +123,19 @@ def write_env(path: Path, values: Dict[str, str]) -> None:
 # ----------------------------------------------------------------------
 # collector.ini helpers
 # ----------------------------------------------------------------------
+def _expand_env(value: str) -> str:
+    """Resolve ``${VAR}`` references against the process environment.
+
+    The collector.ini file may contain placeholders like ``${DCSREST}`` for
+    secrets that docker-compose injects via environment variables. The UI
+    needs to show the actual value, not the placeholder, so the user sees
+    exactly what the collector will use.
+    """
+    if not isinstance(value, str) or "${" not in value:
+        return value or ""
+    return os.path.expandvars(value)
+
+
 def load_settings(ini_path: Path) -> Settings:
     """Load settings from ``collector.ini``; missing keys fall back to defaults."""
     cfg = configparser.ConfigParser(interpolation=None)
@@ -133,20 +146,20 @@ def load_settings(ini_path: Path) -> Settings:
 
     if cfg.has_section("datacore"):
         d = cfg["datacore"]
-        s.dcs_rest_host = d.get("rest_host", s.dcs_rest_host)
-        s.dcs_server_host = d.get("server_host", s.dcs_server_host)
-        s.dcs_username = d.get("username", s.dcs_username)
-        s.dcs_password = d.get("password", s.dcs_password)
+        s.dcs_rest_host = _expand_env(d.get("rest_host", s.dcs_rest_host))
+        s.dcs_server_host = _expand_env(d.get("server_host", s.dcs_server_host))
+        s.dcs_username = _expand_env(d.get("username", s.dcs_username))
+        s.dcs_password = _expand_env(d.get("password", s.dcs_password))
         s.dcs_scheme = d.get("scheme", s.dcs_scheme)
         s.dcs_verify_tls = d.getboolean("verify_tls", fallback=s.dcs_verify_tls)
         s.dcs_api_version = d.get("api_version", s.dcs_api_version)
 
     if cfg.has_section("influxdb"):
         i = cfg["influxdb"]
-        s.influx_url = i.get("url", s.influx_url)
-        s.influx_db = i.get("database", s.influx_db)
-        s.influx_user = i.get("username", s.influx_user)
-        s.influx_password = i.get("password", s.influx_password)
+        s.influx_url = _expand_env(i.get("url", s.influx_url))
+        s.influx_db = _expand_env(i.get("database", s.influx_db))
+        s.influx_user = _expand_env(i.get("username", s.influx_user))
+        s.influx_password = _expand_env(i.get("password", s.influx_password))
         s.influx_create_db = i.getboolean(
             "create_database", fallback=s.influx_create_db
         )
