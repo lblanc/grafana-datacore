@@ -147,7 +147,7 @@ as fields so dashboards can do value-mapping (Online/Offline, etc.).
 ### 1. Clone the repository
 
 ```bash
-git clone <your-fork-url> grafana-datacore
+git clone https://github.com/lblanc/grafana-datacore.git
 cd grafana-datacore
 ```
 
